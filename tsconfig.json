@@ -16,11 +16,7 @@
     "typeRoots": ["node_modules/@types", "src/types"],
     "plugins": [{ "transform": "ts-transformer-imports" }]
   },
-  "files": [
-    "src/index.ts",
-    "src/types/index.d.ts",
-    "src/blockchains/ethereum/ethereum.client.ts"
-  ],
+  "files": ["src/index.ts", "src/types/index.d.ts"],
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
 }

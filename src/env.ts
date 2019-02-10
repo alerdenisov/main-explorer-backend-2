@@ -1,5 +1,6 @@
 import * as joi from 'joi';
 import { config } from 'dotenv';
+import { ADDRESS_REGEX } from 'validation-rules';
 config();
 
 const customJoi = joi.extend((j: any) => ({
@@ -18,7 +19,6 @@ export async function setupEnvironment() {
         .valid(['development', 'test', 'production'])
         .default('development'),
       PORT: joi.number().default(3000),
-      CURRENCIES: customJoi.stringArray().required(),
 
       DATABASE_TYPE: joi.string().default('mysql'),
       DATABASE_USER: joi.string().default('user'),
@@ -31,6 +31,9 @@ export async function setupEnvironment() {
       MICROSERVICES_RETRY_DELAYS: joi.number().default(3000),
 
       REDIS_URL: joi.string().default('redis://redis'),
+      NODE_URL: joi.string().uri({ allowRelative: false }),
+      FROM_BLOCK: joi.number().default(0),
+      CONTRACT_ADDRESS: joi.string().regex(ADDRESS_REGEX),
     },
     {
       stripUnknown: true,

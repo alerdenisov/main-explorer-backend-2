@@ -30,19 +30,8 @@ services:
     environment:
       ALLOW_EMPTY_PASSWORD: 'yes'
 
-  devnet:
-    # docker run -p 8545:8545 -p 8546:8546 smartcontract/devnet --config /devnet/miner.toml --force-sealing
-    image: smartcontract/devnet
-    hostname: devnet
-    ports:
-      - 8545:8545
-      - 8546:8546
-    command: --config /devnet/miner.toml --force-sealing
-    volumes:
-      - ./tmp/devnet:/devnet/data/miner
-
   api:
-    image: alerdenisov/app:latest
+    image: alerdenisov/main-explorer:latest
     depends_on:
       - mysql
       - redis
@@ -53,13 +42,15 @@ services:
     environment:
       PORT: 4000
       DATABASE_HOST: mysql
+      DATABASE_USER: user
+      DATABASE_PASSWORD: password
       REDIS_URL: redis://redis:6379
     ports:
       - 4000:4000
     command: /bin/sh dev-run.sh api
 
-  merchant:
-    image: alerdenisov/app:latest
+  exporter:
+    image: alerdenisov/main-explorer:latest
     depends_on:
       - mysql
       - redis
@@ -68,62 +59,9 @@ services:
     build:
       context: .
     environment:
+      PORT: 4000
       DATABASE_HOST: mysql
+      DATABASE_USER: user
+      DATABASE_PASSWORD: password
       REDIS_URL: redis://redis:6379
-    command: /bin/sh dev-run.sh merchant
-
-  notification:
-    image: alerdenisov/app:latest
-    depends_on:
-      - mysql
-      - redis
-    volumes:
-      - ./src:/usr/src/app/src
-    build:
-      context: .
-    environment:
-      DATABASE_HOST: mysql
-      REDIS_URL: redis://redis:6379
-    command: /bin/sh dev-run.sh devnet notification
-
-  # seed:
-  #   image: alerdenisov/app:latest
-  #   depends_on:
-  #     - mysql
-  #     - redis
-  #   volumes:
-  #     - ./src:/usr/src/app/src
-  #   build:
-  #     context: .
-  #   environment:
-  #     DATABASE_HOST: mysql
-  #     REDIS_URL: redis://redis:6379
-  #   command: /bin/sh dev-run.sh seedb
-
-  devnet-service:
-    image: alerdenisov/app:latest
-    depends_on:
-      - mysql
-      - redis
-    volumes:
-      - ./src:/usr/src/app/src
-    build:
-      context: .
-    environment:
-      DATABASE_HOST: mysql
-      REDIS_URL: redis://redis:6379
-    command: /bin/sh dev-run.sh devnet blockchain
-
-  ethereum-service:
-    image: alerdenisov/app:latest
-    depends_on:
-      - mysql
-      - redis
-    volumes:
-      - ./src:/usr/src/app/src
-    build:
-      context: .
-    environment:
-      DATABASE_HOST: mysql
-      REDIS_URL: redis://redis:6379
-    command: /bin/sh dev-run.sh ethereum blockchain
+    command: /bin/sh dev-run.sh exporter

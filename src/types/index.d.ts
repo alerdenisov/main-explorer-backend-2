@@ -2,7 +2,6 @@ declare namespace NodeJS {
   interface ProcessEnv {
     NODE_ENV: 'production' | 'development' | 'staging';
     PORT: number;
-    CURRENCIES: string[];
 
     DATABASE_TYPE: string;
     DATABASE_USER?: string;
@@ -15,5 +14,8 @@ declare namespace NodeJS {
     MICROSERVICES_RETRY_DELAYS: number;
 
     REDIS_URL: string;
+    NODE_URL: string;
+    CONTRACT_ADDRESS: string;
+    FROM_BLOCK: number;
   }
 }

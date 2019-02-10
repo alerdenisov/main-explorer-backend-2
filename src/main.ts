@@ -1,22 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { Transport } from '@nestjs/microservices';
 import { setupEnvironment } from 'env';
-import { ApplicationModule } from 'app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as cors from 'cors';
-import { MerchantsModule } from 'merchants/merchants.module';
-import { DatabaseModule } from 'database/database.module';
-import { BlockchainModule } from 'blockchains/blockchain.module';
-import { ApiModule } from 'api/api.module';
 import { ServiceModule } from 'service.module';
 import { Type, DynamicModule, ForwardReference } from '@nestjs/common';
 import { TypeormConfig } from 'typeorm-config';
-import { ManageModule } from 'manage/manage.module';
-import { NotificationModule } from 'notifications/notifications.module';
-
-const packageJson: {
-  version: string;
-} = require('../package.json');
+import packageJson = require('../package.json');
+import { ApiModule } from 'api/api.module';
+import { ExporterModule } from 'exporter/exporter.module';
 
 export const services: {
   [service: string]:
@@ -26,12 +17,13 @@ export const services: {
     | ((args?: string[]) => Promise<DynamicModule>)
     | Promise<DynamicModule>;
 } = {
-  seedb: (args?: string[]) => DatabaseModule.forRoot(TypeormConfig),
-  merchant: MerchantsModule,
-  blockchain: (args?: string[]) =>
-    BlockchainModule.forRoot(args[args.length - 2]),
+  // seedb: (args?: string[]) => DatabaseModule.forRoot(TypeormConfig),
+  // merchant: MerchantsModule,
+  // blockchain: (args?: string[]) =>
+  //   BlockchainModule.forRoot(args[args.length - 2]),
+  exporter: ExporterModule,
   api: ApiModule,
-  notification: NotificationModule,
+  // notification: NotificationModule,
 };
 
 function isConstructor<T>(f: Function | Type<T>): f is Type<T> {
@@ -54,7 +46,8 @@ export async function bootstrap() {
 
   if (typeof services[service] !== 'undefined') {
     if (service === 'api') {
-      const api = await NestFactory.create(ApiModule);
+      const api = await NestFactory.create(ServiceModule.forRoot(ApiModule));
+
       api.enableCors({
         origin: '*',
       });
