@@ -43,7 +43,7 @@ export class BalancesDemon extends BaseNetworkDemon {
       where: {
         processedBalance: false,
       },
-      take: 10,
+      take: 1000,
       order: {
         createAt: 'ASC',
       },

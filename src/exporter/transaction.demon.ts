@@ -41,7 +41,7 @@ export class TransactionDemon extends BaseNetworkDemon {
       where: {
         processedTransaction: false,
       },
-      take: 1000,
+      take: 500,
       order: {
         createAt: 'ASC',
       },
