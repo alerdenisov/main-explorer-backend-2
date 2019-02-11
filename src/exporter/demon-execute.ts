@@ -30,7 +30,6 @@ export class DemonExecute {
       await of(this.TransactionDemon.execute());
       await of(this.BalancesDemon.execute());
       await of(this.DatetimeDemon.execute());
-      await Bluebird.delay(100);
     }
   }
 }
