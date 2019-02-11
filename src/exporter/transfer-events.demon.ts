@@ -42,7 +42,10 @@ export class TransferEventsDemon extends BaseNetworkDemon {
       },
     });
 
-    this.lastBlock = Math.max(this.lastBlock, lastEvent ? lastEvent.blockHeight : process.env.FROM_BLOCK;
+    this.lastBlock = Math.max(
+      this.lastBlock,
+      lastEvent ? lastEvent.blockHeight : process.env.FROM_BLOCK,
+    );
 
     console.log('export transfer events');
     const block = await Bluebird.resolve(
