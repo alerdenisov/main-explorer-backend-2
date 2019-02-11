@@ -45,10 +45,11 @@ export class ApiController {
 
   @Get('/info')
   async getInfo() {
-    const holdersCount = await this.holderRepository.count();
-    // const activity = await this.transferRepository.createQueryBuilder('transfer')
-    // .select('UNIX_TIMESTAMP(transfer.date) as date')
-    // .groupBy('date')
+    const holdersCount = await this.holderRepository.count({
+      where: {
+        estimateBalance: MoreThan(0),
+      },
+    });
     const daysActivity: Array<{
       count: number;
       day: number;
