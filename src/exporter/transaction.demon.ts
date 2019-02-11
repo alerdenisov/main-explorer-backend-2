@@ -33,7 +33,6 @@ export class TransactionDemon extends BaseNetworkDemon {
   }
 
   async execute() {
-    console.log('export transactions');
     if (!this.transferRepository || !this.transactionRepository) {
       await Bluebird.delay(200);
       return;
@@ -47,6 +46,8 @@ export class TransactionDemon extends BaseNetworkDemon {
         createAt: 'ASC',
       },
     });
+
+    console.log('export transactions', total);
 
     if (total <= 0 || pending.length <= 0) {
       return;

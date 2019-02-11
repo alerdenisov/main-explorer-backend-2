@@ -47,10 +47,16 @@ export class TransferEventsDemon extends BaseNetworkDemon {
       lastEvent ? lastEvent.blockHeight : process.env.FROM_BLOCK,
     );
 
-    console.log('export transfer events');
     const block = await Bluebird.resolve(
       this.web3.eth.getBlockNumber(),
     ).timeout(10000, 'getBlockNumber() timeout');
+
+    console.log(
+      'export transfer events since',
+      this.lastBlock,
+      'in chain',
+      block,
+    );
 
     if (this.lastBlock >= block) {
       return;

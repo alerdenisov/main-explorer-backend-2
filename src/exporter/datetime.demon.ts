@@ -38,14 +38,13 @@ export class DatetimeDemon extends BaseNetworkDemon {
       return;
     }
 
-    console.log('get datetime of transfer');
-
     const [pending, total] = await this.transferRepository.findAndCount({
       where: {
         date: null,
       },
       take: 100,
     });
+    console.log('get datetime of transfer', total);
 
     if (total <= 0) {
       return;

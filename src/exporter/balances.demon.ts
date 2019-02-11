@@ -39,7 +39,6 @@ export class BalancesDemon extends BaseNetworkDemon {
       await Bluebird.delay(200);
       return;
     }
-    console.log('calculate holder balances');
     const [pending, total] = await this.transferRepository.findAndCount({
       where: {
         processedBalance: false,
@@ -49,6 +48,8 @@ export class BalancesDemon extends BaseNetworkDemon {
         createAt: 'ASC',
       },
     });
+
+    console.log('calculate holder balances', total);
 
     if (total <= 0 || pending.length <= 0) {
       return;
