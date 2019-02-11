@@ -1,4 +1,4 @@
-import { Injectable } from '../../node_modules/@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TransferEventsDemon } from './transfer-events.demon';
 import { TransactionDemon } from './transaction.demon';
 import { BalancesDemon } from './balances.demon';
