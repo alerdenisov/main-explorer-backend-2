@@ -64,13 +64,13 @@ export class TransferEventsDemon extends BaseNetworkDemon {
     // new block(s)
     let lookupBlocks = Math.min(100, block - this.lastBlock);
     console.log(
-      `get events from ${this.lastBlock} to ${this.lastBlock +
+      `get events from ${this.lastBlock + 1} to ${this.lastBlock +
         lookupBlocks} (max: ${block}, left: ${block - this.lastBlock})`,
     );
 
     const events = await Bluebird.resolve(
       this.token.getPastEvents('Transfer', {
-        fromBlock: this.lastBlock,
+        fromBlock: this.lastBlock + 1,
         toBlock: this.lastBlock + lookupBlocks,
       }),
     ).timeout(10000, 'getPastEvents(Transfer) timeout');
