@@ -48,8 +48,9 @@ export class DatetimeDemon extends BaseNetworkDemon {
       });
 
       if (total <= 0) {
-        await Bluebird.delay(1000);
+        continue;
       }
+
       console.log(`Found ${total} transfers without datetime`);
 
       const blockHeights = new Set(pending.map(t => t.blockHeight));

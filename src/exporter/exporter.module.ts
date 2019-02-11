@@ -16,6 +16,7 @@ import { WebsocketProvider } from 'web3/providers';
 import { HolderEntity, HolderEntityRepository } from 'entities/holder.entity';
 import { BalancesDemon } from './balances.demon';
 import { DatetimeDemon } from './datetime.demon';
+import { DemonExecute } from './demon-execute';
 
 @Module({
   providers: [
@@ -41,6 +42,8 @@ import { DatetimeDemon } from './datetime.demon';
     TransactionDemon,
     BalancesDemon,
     DatetimeDemon,
+
+    DemonExecute,
   ],
   imports: [
     TypeOrmModule.forFeature([

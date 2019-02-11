@@ -50,7 +50,6 @@ export class TransactionDemon extends BaseNetworkDemon {
       });
 
       if (total <= 0 || pending.length <= 0) {
-        await Bluebird.delay(1000);
         continue;
       }
 

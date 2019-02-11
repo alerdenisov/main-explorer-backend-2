@@ -21,8 +21,6 @@ export abstract class BaseNetworkDemon {
     Bluebird.config({
       cancellation: true,
     });
-
-    this.wrapper(this.run.bind(this));
   }
 
   connectToNetwork(): any {
