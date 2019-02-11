@@ -84,6 +84,7 @@ export class ApiController {
       .createQueryBuilder('transfer')
       .where('transfer.from = :from')
       .orWhere('transfer.to = :to')
+      .orderBy('transfer.blockHeight', 'DESC')
       .offset((page - 1) * limit)
       .limit(limit)
       .setParameters({
