@@ -32,42 +32,40 @@ export class DatetimeDemon extends BaseNetworkDemon {
     super(logger, web3factory);
   }
 
-  async run() {
-    while (!this.transferRepository) {
+  async execute() {
+    if (!this.transferRepository) {
       await Bluebird.delay(200);
+      return;
     }
 
-    while (true) {
-      console.log('get datetime of transfer');
+    console.log('get datetime of transfer');
 
-      const [pending, total] = await this.transferRepository.findAndCount({
-        where: {
-          date: null,
-        },
-        take: 100,
-      });
+    const [pending, total] = await this.transferRepository.findAndCount({
+      where: {
+        date: null,
+      },
+      take: 100,
+    });
 
-      if (total <= 0) {
-        continue;
-      }
-
-      console.log(`Found ${total} transfers without datetime`);
-
-      const blockHeights = new Set(pending.map(t => t.blockHeight));
-      const blocks = await Bluebird.all(
-        Array.from(blockHeights).map(h => this.web3.eth.getBlock(h)),
-      ).then(arr =>
-        arr.reduce(
-          (dict, block) => ((dict[block.number] = block), dict),
-          {} as { [height: number]: Block },
-        ),
-      );
-
-      await this.transferRepository.save(
-        pending.map(
-          p => ((p.date = new Date(blocks[p.blockHeight].timestamp * 1000)), p),
-        ),
-      );
+    if (total <= 0) {
+      return;
     }
+
+    console.log(`Found ${total} transfers without datetime`);
+
+    const blockHeights = new Set(pending.map(t => t.blockHeight));
+    const blocks = await Bluebird.all(
+      Array.from(blockHeights).map(h => this.web3.eth.getBlock(h)),
+    ).then(arr =>
+      arr.reduce((dict, block) => ((dict[block.number] = block), dict), {} as {
+        [height: number]: Block;
+      }),
+    );
+
+    await this.transferRepository.save(
+      pending.map(
+        p => ((p.date = new Date(blocks[p.blockHeight].timestamp * 1000)), p),
+      ),
+    );
   }
 }

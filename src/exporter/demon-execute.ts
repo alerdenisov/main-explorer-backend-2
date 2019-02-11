@@ -26,10 +26,10 @@ export class DemonExecute {
   }
   async loop() {
     while (true) {
-      await of(this.TransferEventsDemon.run());
-      await of(this.TransactionDemon.run());
-      await of(this.BalancesDemon.run());
-      await of(this.DatetimeDemon.run());
+      await of(this.TransferEventsDemon.execute());
+      await of(this.TransactionDemon.execute());
+      await of(this.BalancesDemon.execute());
+      await of(this.DatetimeDemon.execute());
       await Bluebird.delay(100);
     }
   }

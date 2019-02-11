@@ -38,15 +38,5 @@ export abstract class BaseNetworkDemon {
     });
   }
 
-  async wrapper(func: () => Promise<any>) {
-    while (true) {
-      try {
-        await func();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  }
-
-  abstract run(): Promise<any>;
+  abstract execute(): Promise<any>;
 }

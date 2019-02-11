@@ -32,106 +32,94 @@ export class TransactionDemon extends BaseNetworkDemon {
     super(logger, web3factory);
   }
 
-  async run() {
+  async execute() {
     console.log('export transactions');
-    while (!this.transferRepository || !this.transactionRepository) {
+    if (!this.transferRepository || !this.transactionRepository) {
       await Bluebird.delay(200);
+      return;
+    }
+    const [pending, total] = await this.transferRepository.findAndCount({
+      where: {
+        processedTransaction: false,
+      },
+      take: 1000,
+      order: {
+        createAt: 'ASC',
+      },
+    });
+
+    if (total <= 0 || pending.length <= 0) {
+      return;
     }
 
-    while (true) {
-      const [pending, total] = await this.transferRepository.findAndCount({
-        where: {
-          processedTransaction: false,
-        },
-        take: 1000,
-        order: {
-          createAt: 'ASC',
-        },
-      });
+    console.log(`Found ${total} pending transactions`);
 
-      if (total <= 0 || pending.length <= 0) {
-        continue;
-      }
+    const hashes = new Set(pending.map(transfer => transfer.txHash));
 
-      console.log(`Found ${total} pending transactions`);
+    const known = await this.transactionRepository.find({
+      where: {
+        hash: In(Array.from(hashes)),
+      },
+    });
 
-      const hashes = new Set(pending.map(transfer => transfer.txHash));
+    known.forEach(tx => hashes.delete(tx.hash));
 
-      const known = await this.transactionRepository.find({
-        where: {
-          hash: In(Array.from(hashes)),
-        },
-      });
-
-      known.forEach(tx => hashes.delete(tx.hash));
-
-      function getBigNumber(tx: Transaction, field: keyof Transaction) {
-        const value = tx[field];
-        if (!value) {
-          return new bn(0);
-        }
-
-        if (typeof value === 'string') {
-          if (value.startsWith('0x')) {
-            return new bn(value.substr(2), 16);
-          }
-
-          return new bn(value);
-        }
-
-        if (typeof value === 'number') {
-          return new bn(value);
-        }
-
+    function getBigNumber(tx: Transaction, field: keyof Transaction) {
+      const value = tx[field];
+      if (!value) {
         return new bn(0);
       }
 
-      const transactions = await Bluebird.all(
-        Array.from(hashes).map(hash =>
-          Bluebird.resolve(this.web3.eth.getTransaction(hash)).timeout(
-            10000,
-            'getTransaction(Transfer) timeout',
-          ),
-        ),
-      );
+      if (typeof value === 'string') {
+        if (value.startsWith('0x')) {
+          return new bn(value.substr(2), 16);
+        }
 
-      const entities = transactions.map(tx => {
-        console.assert(tx.hash, 'Hash is required');
-        console.assert(tx.blockHash, 'Block hash is required');
+        return new bn(value);
+      }
 
-        const entity = new TransactionEntity();
-        entity.blockHash = tx.blockHash;
-        entity.blockNumber = tx.blockNumber;
-        entity.from = tx.from || '0x0000000000000000000000000000000000000000';
-        entity.to = tx.to || '0x0000000000000000000000000000000000000000';
-        entity.gas = tx.gas;
-        entity.gasPrice = getBigNumber(tx, 'gasPrice');
-        entity.hash = tx.hash;
-        entity.nonce = tx.nonce;
-        entity.r = tx.r;
-        entity.s = tx.s;
-        entity.transactionIndex = tx.transactionIndex || 0;
-        entity.v = getBigNumber(tx, 'v').toNumber();
-        entity.value = getBigNumber(tx, 'value');
+      if (typeof value === 'number') {
+        return new bn(value);
+      }
 
-        return entity;
-      });
-
-      await this.transferRepository.save(
-        pending.map(p => ((p.processedTransaction = true), p)),
-      );
-      // console.log(pending.map(transfer => transfer.eventId));
-
-      // await this.transferRepository.update(
-      //   {
-      //     eventId: In(pending.map(transfer => transfer.eventId)),
-      //   },
-      //   { processedTransaction: true },
-      // );
-
-      // console.log(transactions);
-
-      await this.transactionRepository.save(entities);
+      return new bn(0);
     }
+
+    const transactions = await Bluebird.all(
+      Array.from(hashes).map(hash =>
+        Bluebird.resolve(this.web3.eth.getTransaction(hash)).timeout(
+          10000,
+          'getTransaction(Transfer) timeout',
+        ),
+      ),
+    );
+
+    const entities = transactions.map(tx => {
+      console.assert(tx.hash, 'Hash is required');
+      console.assert(tx.blockHash, 'Block hash is required');
+
+      const entity = new TransactionEntity();
+      entity.blockHash = tx.blockHash;
+      entity.blockNumber = tx.blockNumber;
+      entity.from = tx.from || '0x0000000000000000000000000000000000000000';
+      entity.to = tx.to || '0x0000000000000000000000000000000000000000';
+      entity.gas = tx.gas;
+      entity.gasPrice = getBigNumber(tx, 'gasPrice');
+      entity.hash = tx.hash;
+      entity.nonce = tx.nonce;
+      entity.r = tx.r;
+      entity.s = tx.s;
+      entity.transactionIndex = tx.transactionIndex || 0;
+      entity.v = getBigNumber(tx, 'v').toNumber();
+      entity.value = getBigNumber(tx, 'value');
+
+      return entity;
+    });
+
+    await this.transferRepository.save(
+      pending.map(p => ((p.processedTransaction = true), p)),
+    );
+
+    await this.transactionRepository.save(entities);
   }
 }
