@@ -17,5 +17,9 @@ declare namespace NodeJS {
     NODE_URL: string;
     CONTRACT_ADDRESS: string;
     FROM_BLOCK: number;
+
+    FORCE_HEAL_TO: number;
+    HEAL_LOOKUP_DISTANCE: number;
+    HEAL_BATCH_SIZE: number;
   }
 }

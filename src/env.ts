@@ -34,6 +34,10 @@ export async function setupEnvironment() {
       NODE_URL: joi.string().uri({ allowRelative: false }),
       FROM_BLOCK: joi.number().default(0),
       CONTRACT_ADDRESS: joi.string().regex(ADDRESS_REGEX),
+
+      FORCE_HEAL_TO: joi.number().default(-1),
+      HEAL_LOOKUP_DISTANCE: joi.number().default(50), // huge enough to get ANY double spend (cost almost $100 mln to attack in mainnet)
+      HEAL_BATCH_SIZE: joi.number().default(250),
     },
     {
       stripUnknown: true,
