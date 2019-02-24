@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   TransferEntityRepository,
   TransferEntity,
+  TransferEntityArchive,
+  TransferEntityArchiveRepository,
 } from 'entities/transfer.entity';
 import { TransferEventsDemon } from './transfer-events.demon';
 import { TransactionDemon } from './transaction.demon';
@@ -11,12 +13,15 @@ import erc20 = require('./erc20.json');
 import {
   TransactionEntity,
   TransactionEntityRepository,
+  TransactionEntityArchive,
+  TransactionEntityArchiveRepository,
 } from 'entities/transaction.entity';
 import { WebsocketProvider } from 'web3/providers';
 import { HolderEntity, HolderEntityRepository } from 'entities/holder.entity';
 import { BalancesDemon } from './balances.demon';
 import { DatetimeDemon } from './datetime.demon';
 import { DemonExecute } from './demon-execute';
+import { HealerDemon } from './healer.demon';
 
 @Module({
   providers: [
@@ -38,6 +43,7 @@ import { DemonExecute } from './demon-execute';
         };
       },
     },
+    HealerDemon,
     TransferEventsDemon,
     TransactionDemon,
     BalancesDemon,
@@ -49,8 +55,12 @@ import { DemonExecute } from './demon-execute';
     TypeOrmModule.forFeature([
       TransferEntity,
       TransferEntityRepository,
+      TransferEntityArchive,
+      TransferEntityArchiveRepository,
       TransactionEntity,
       TransactionEntityRepository,
+      TransactionEntityArchive,
+      TransactionEntityArchiveRepository,
       HolderEntity,
       HolderEntityRepository,
     ]),
