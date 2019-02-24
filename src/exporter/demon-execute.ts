@@ -4,6 +4,7 @@ import { TransactionDemon } from './transaction.demon';
 import { BalancesDemon } from './balances.demon';
 import { DatetimeDemon } from './datetime.demon';
 import * as Bluebird from 'bluebird';
+import { HealerDemon } from './healer.demon';
 
 async function of(handle: Promise<any>) {
   try {
@@ -17,6 +18,7 @@ async function of(handle: Promise<any>) {
 @Injectable()
 export class DemonExecute {
   constructor(
+    private readonly HealerDemon: HealerDemon,
     private readonly TransferEventsDemon: TransferEventsDemon,
     private readonly TransactionDemon: TransactionDemon,
     private readonly BalancesDemon: BalancesDemon,
@@ -26,6 +28,7 @@ export class DemonExecute {
   }
   async loop() {
     while (true) {
+      await of(this.HealerDemon.execute());
       await of(this.TransferEventsDemon.execute());
       await of(this.TransactionDemon.execute());
       await of(this.BalancesDemon.execute());
