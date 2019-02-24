@@ -92,3 +92,11 @@ export class TransactionEntity {
 export class TransactionEntityRepository extends ExtendedRepository<
   TransactionEntity
 > {}
+
+@Entity({
+  name: 'transaction_entity_archive',
+})
+export class TransactionEntityArchive extends TransactionEntity {}
+
+@EntityRepository(TransactionEntityArchive)
+export class TransactionEntityArchiveRepository extends TransactionEntityRepository {}
