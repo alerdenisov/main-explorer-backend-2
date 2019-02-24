@@ -84,6 +84,7 @@ export class TransferEventsDemon extends BaseNetworkDemon {
         console.assert(ev.returnValues.value, 'value is require');
         const te = new TransferEntity();
         te.blockHeight = ev.blockNumber;
+        te.blockHash = ev.blockHash;
         te.from = ev.returnValues.from;
         te.to = ev.returnValues.to;
         te.amount = new BN(ev.returnValues.value);

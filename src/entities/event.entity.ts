@@ -17,7 +17,6 @@ export enum EventType {
   Approval = 'approval',
 }
 
-@Entity()
 export abstract class EventEntity {
   @ApiModelProperty({
     description: 'Unique event id based on SHA256',
@@ -43,6 +42,11 @@ export abstract class EventEntity {
   @Index()
   @Column('int')
   blockHeight: number;
+
+  @Index()
+  @Matches(HASH_REGEX)
+  @Column(HASH_COLUMN)
+  blockHash: string;
 
   @ApiModelProperty({
     description: 'ERC20 based event type',
