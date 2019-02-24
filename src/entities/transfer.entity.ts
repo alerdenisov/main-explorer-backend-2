@@ -51,3 +51,13 @@ export class TransferEntityRepository extends ExtendedRepository<
     const event = this.create();
   }
 }
+
+@Entity({
+  name: 'transfer_entity_archive',
+})
+export class TransferEntityArchive extends TransferEntity {}
+
+@EntityRepository(TransferEntityArchive)
+export class TransferEntityArchiveRepository extends ExtendedRepository<
+  TransferEntityArchive
+> {}
