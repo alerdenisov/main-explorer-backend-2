@@ -40,12 +40,15 @@ export class HolderEntity {
   lastBlock: number;
 
   @Column(BIGNUM_COLUMN)
+  @Transform(v => v.toFixed())
   incoming: BN;
 
   @Column(BIGNUM_COLUMN)
+  @Transform(v => v.toFixed())
   outgoing: BN;
 
   @Column(BIGNUM_COLUMN)
+  @Transform(v => v.toFixed())
   balance: BN;
 
   @Index()

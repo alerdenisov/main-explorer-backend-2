@@ -165,7 +165,7 @@ export class ApiController {
   }) {
     const [holders, total] = await this.holderRepository.findAndCount({
       order: {
-        balance: 'DESC',
+        estimateBalance: 'DESC',
       },
       skip: (page - 1) * limit,
       take: limit,
