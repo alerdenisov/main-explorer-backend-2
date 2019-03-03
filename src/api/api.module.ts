@@ -138,7 +138,7 @@ export class ApiController {
   }) {
     const [events, total] = await this.transferRepository.findAndCount({
       where: {
-        processedBalance: true,
+        // processedBalance: true,
         processedTransaction: true,
         date: MoreThan(new Date(0)),
       },
