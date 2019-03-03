@@ -24,37 +24,10 @@ import { BatchRequest, Block } from 'web3/eth/types';
 import { MoreThanOrEqual, In } from 'typeorm';
 import BN from 'bignumber.js';
 import { BaseNetworkDemon } from './base-network.demon';
+import { PromisifyBatchRequest } from './promisify-request';
 
 // Found lowest reorganized block
 const LOWEST_FAIL = 7208021;
-
-class PromisifyBatchRequest {
-  batch: BatchRequest;
-  requests: Promise<any>[];
-
-  constructor(web3: Web3) {
-    this.batch = new web3.BatchRequest();
-    this.requests = [];
-  }
-
-  add(func: any, ...params: any[]) {
-    let request = new Promise((resolve, reject) => {
-      this.batch.add(
-        func.call(null, ...params, (err: Error, data: any) => {
-          if (err) return reject(err);
-          resolve(data);
-        }),
-      );
-    });
-
-    this.requests.push(request);
-  }
-
-  async execute() {
-    this.batch.execute();
-    return await Promise.all(this.requests);
-  }
-}
 
 @Injectable()
 export class HealerDemon extends BaseNetworkDemon {
@@ -101,9 +74,6 @@ export class HealerDemon extends BaseNetworkDemon {
   }
 
   async heal(allAfterHeight: number) {
-    const alreadyHealedHolders: {
-      [address: string]: true;
-    } = {};
     const transformer = new HexTransformer();
 
     const count = await this.transferRepository.count({
@@ -162,20 +132,12 @@ SELECT tbl.address FROM (
   `,
           )
           .then((results: any[]) =>
-            results
-              .map(
-                (r, index) => (
-                  index === 0 ? console.log(r) : '', transformer.from(r.address)
-                ),
-              )
-              .filter(
-                address => typeof alreadyHealedHolders[address] === 'undefined',
+            results.map(
+              (r, index) => (
+                index === 0 ? console.log(r) : '', transformer.from(r.address)
               ),
+            ),
           );
-
-        console.log(
-          `Found ${affectedHolders.length} new affected holders.. so cure them`,
-        );
 
         console.log('Archivate transfers');
         await this.transferArchiveRepository.insert(transfers);
@@ -188,6 +150,12 @@ SELECT tbl.address FROM (
         await this.transactionRepository.remove(transactions);
 
         if (affectedHolders.length) {
+          console.log(
+            `Found ${
+              affectedHolders.length
+            } new affected holders.. so cure them`,
+          );
+
           console.log('unprocess senders balances');
           await this.transferRepository.update(
             { from: In(affectedHolders) },
@@ -200,21 +168,13 @@ SELECT tbl.address FROM (
           );
 
           console.log('unprocess balances');
-          await this.holderRepository.update(
-            {
-              address: In(affectedHolders),
-            },
-            {
-              estimateBalance: 0,
-              incomingSum: new BN(0),
-              outgoingSum: new BN(0),
-              balance: new BN(0),
-              lastChangeBlock: 0,
-            },
-          );
-
-          affectedHolders.forEach(
-            address => (alreadyHealedHolders[address] = true),
+          await this.holderRepository.save(
+            affectedHolders.map(t => {
+              const holder = this.holderRepository.create();
+              holder.address = t;
+              holder.dirty = true;
+              return holder;
+            }),
           );
         }
         console.log(
@@ -251,6 +211,14 @@ SELECT tbl.address FROM (
       .then(raw =>
         raw.map((r: any) => ((r.hash = transformer.from(r.hash as any)), r)),
       );
+
+    const latestInNetwork = await this.web3.eth.getBlockNumber();
+    if (
+      latestInNetwork - limit >
+      blocksToCheck[blocksToCheck.length - 1].height
+    ) {
+      return;
+    }
 
     console.log('Ask node for latest blocks');
 

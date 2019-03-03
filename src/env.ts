@@ -38,6 +38,8 @@ export async function setupEnvironment() {
       FORCE_HEAL_TO: joi.number().default(-1),
       HEAL_LOOKUP_DISTANCE: joi.number().default(50), // huge enough to get ANY double spend (cost almost $100 mln to attack in mainnet)
       HEAL_BATCH_SIZE: joi.number().default(250),
+
+      LOOKUP_DISTANCE: joi.number().default(1000),
     },
     {
       stripUnknown: true,

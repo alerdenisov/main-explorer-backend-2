@@ -14,6 +14,7 @@ import Contract from 'web3/eth/contract';
 import Web3 = require('web3');
 import { WebsocketProvider } from 'web3/providers';
 import * as Bluebird from 'bluebird';
+import { PromisifyBatchRequest } from './promisify-request';
 
 @Injectable()
 export class TransactionDemon extends BaseNetworkDemon {
@@ -41,18 +42,17 @@ export class TransactionDemon extends BaseNetworkDemon {
       where: {
         processedTransaction: false,
       },
-      take: 500,
+      take: 100,
       order: {
         createAt: 'ASC',
       },
     });
 
-    console.log('export transactions', total);
-
-    if (total <= 0 || pending.length <= 0) {
+    if (total === 0) {
       return;
     }
 
+    console.log('export transactions', total);
     console.log(`Found ${total} pending transactions`);
 
     const hashes = new Set(pending.map(transfer => transfer.txHash));
@@ -86,14 +86,14 @@ export class TransactionDemon extends BaseNetworkDemon {
       return new bn(0);
     }
 
-    const transactions = await Bluebird.all(
-      Array.from(hashes).map(hash =>
-        Bluebird.resolve(this.web3.eth.getTransaction(hash)).timeout(
-          10000,
-          'getTransaction(Transfer) timeout',
-        ),
-      ),
+    const request = new PromisifyBatchRequest(this.web3);
+    Array.from(hashes).forEach(hash =>
+      request.add((this.web3.eth.getTransaction as any).request, hash),
     );
+
+    const transactions: Transaction[] = await Bluebird.resolve(
+      request.execute(),
+    ).timeout(5000, 'get transactions timeout');
 
     const entities = transactions.map(tx => {
       console.assert(tx.hash, 'Hash is required');

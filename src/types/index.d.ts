@@ -21,5 +21,7 @@ declare namespace NodeJS {
     FORCE_HEAL_TO: number;
     HEAL_LOOKUP_DISTANCE: number;
     HEAL_BATCH_SIZE: number;
+
+    LOOKUP_DISTANCE: number;
   }
 }

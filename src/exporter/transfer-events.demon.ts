@@ -8,15 +8,16 @@ import {
   TransferEntity,
 } from 'entities/transfer.entity';
 import { BaseNetworkDemon } from './base-network.demon';
+import erc20 = require('./erc20.json');
+import * as Bluebird from 'bluebird';
+
 import Contract from 'web3/eth/contract';
 import Web3 = require('web3');
 import { WebsocketProvider } from 'web3/providers';
-import * as Bluebird from 'bluebird';
-import erc20 = require('./erc20.json');
+import { EventLog } from 'web3/types';
 
 @Injectable()
 export class TransferEventsDemon extends BaseNetworkDemon {
-  lastBlock: number = 0;
   constructor(
     logger: Logger,
     @Inject('web3factory')
@@ -42,38 +43,49 @@ export class TransferEventsDemon extends BaseNetworkDemon {
       },
     });
 
-    this.lastBlock = Math.max(
-      this.lastBlock,
-      lastEvent ? lastEvent.blockHeight : process.env.FROM_BLOCK,
-    );
+    let lastBlock = lastEvent ? lastEvent.blockHeight : process.env.FROM_BLOCK;
 
     const block = await Bluebird.resolve(
       this.web3.eth.getBlockNumber(),
     ).timeout(10000, 'getBlockNumber() timeout');
 
-    console.log(
-      'export transfer events since',
-      this.lastBlock,
-      'in chain',
-      block,
-    );
+    console.log('export transfer events since', lastBlock, 'in chain', block);
 
-    if (this.lastBlock >= block) {
-      return;
+    let found = false;
+    let events: EventLog[];
+
+    while (!found) {
+      if (lastBlock >= block) {
+        return;
+      }
+
+      let lookupBlocks = Math.min(
+        process.env.LOOKUP_DISTANCE,
+        block - lastBlock,
+      );
+
+      console.log(
+        `get events from ${lastBlock + 1} to ${lastBlock +
+          lookupBlocks} (max: ${block}, left: ${block - lastBlock})`,
+      );
+
+      events = await Bluebird.resolve(
+        this.token.getPastEvents('Transfer', {
+          fromBlock: lastBlock + 1,
+          toBlock: lastBlock + lookupBlocks,
+        }),
+      ).timeout(10000, 'getPastEvents(Transfer) timeout');
+
+      console.log(`got ${events.length} events`);
+
+      if (events.length === 0) {
+        lastBlock += lookupBlocks;
+      } else {
+        found = true;
+      }
     }
-    // new block(s)
-    let lookupBlocks = Math.min(100, block - this.lastBlock);
-    console.log(
-      `get events from ${this.lastBlock + 1} to ${this.lastBlock +
-        lookupBlocks} (max: ${block}, left: ${block - this.lastBlock})`,
-    );
 
-    const events = await Bluebird.resolve(
-      this.token.getPastEvents('Transfer', {
-        fromBlock: this.lastBlock + 1,
-        toBlock: this.lastBlock + lookupBlocks,
-      }),
-    ).timeout(10000, 'getPastEvents(Transfer) timeout');
+    // console.log(JSON.stringify(events, null, 2));
 
     await this.transferRepository.save(
       events.map(ev => {
@@ -97,7 +109,5 @@ export class TransferEventsDemon extends BaseNetworkDemon {
         return te;
       }),
     );
-
-    this.lastBlock += lookupBlocks;
   }
 }

@@ -33,23 +33,27 @@ export class HolderEntity {
   updatedAt: Date;
 
   @ManyToMany(t => TransferEntity)
-  @JoinTable()
   engaged: TransferEntity[];
 
   @Index()
-  @Column('double')
-  incoming: number;
+  @Column('int', { unsigned: true })
+  lastBlock: number;
+
+  @Column(BIGNUM_COLUMN)
+  incoming: BN;
+
+  @Column(BIGNUM_COLUMN)
+  outgoing: BN;
+
+  @Column(BIGNUM_COLUMN)
+  balance: BN;
 
   @Index()
-  @Column('double')
-  outgoing: number;
+  @Column('double', { default: 0 })
+  estimateBalance: number;
 
   @Index()
-  @Column('double')
-  balance: number;
-
-  @Index()
-  @Column('boolean')
+  @Column('boolean', { default: true })
   dirty: boolean;
 }
 

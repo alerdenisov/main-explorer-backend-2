@@ -46,7 +46,7 @@ export class DatetimeDemon extends BaseNetworkDemon {
     });
     console.log('get datetime of transfer', total);
 
-    if (total <= 0) {
+    if (total === 0) {
       return;
     }
 
@@ -55,11 +55,16 @@ export class DatetimeDemon extends BaseNetworkDemon {
     const blockHeights = new Set(pending.map(t => t.blockHeight));
     const blocks = await Bluebird.all(
       Array.from(blockHeights).map(h => this.web3.eth.getBlock(h)),
-    ).then(arr =>
-      arr.reduce((dict, block) => ((dict[block.number] = block), dict), {} as {
-        [height: number]: Block;
-      }),
-    );
+    )
+      .then(arr =>
+        arr.reduce(
+          (dict, block) => ((dict[block.number] = block), dict),
+          {} as {
+            [height: number]: Block;
+          },
+        ),
+      )
+      .timeout(5000, 'Timeout in getblock');
 
     await this.transferRepository.save(
       pending.map(
