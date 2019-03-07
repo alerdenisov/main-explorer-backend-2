@@ -33,6 +33,10 @@ export class BlockService extends BaseNetworkService {
     return tmp;
   }
   parseEvents(logs: Log[], options: Partial<UpdateRequestOptions>) {
+    if (!options.tokenAddress) {
+      return [];
+    }
+
     return logs
       .filter(log => log.address === options.tokenAddress)
       .map(log => this.erc20.parseLog(log))
@@ -99,7 +103,15 @@ export class BlockService extends BaseNetworkService {
               a.blockHeight = block.number;
               a.time = new Date(block.timestamp * 1000);
               a.transactionHashes = (block.transactions as any[]).map(
-                (tx: Transaction) => tx.hash,
+                (tx: Transaction | string) => {
+                  if (typeof tx === 'object' && tx.hash) {
+                    return tx.hash;
+                  } else if (typeof tx === 'string') {
+                    return tx;
+                  } else {
+                    throw new Error('unknown tx');
+                  }
+                },
               );
               return a;
             }),
@@ -121,7 +133,7 @@ export class BlockService extends BaseNetworkService {
         options.blockHeight,
       );
 
-      if (possibleSameLatest.hash != options.blockHash) {
+      if (!possibleSameLatest || possibleSameLatest.hash != options.blockHash) {
         // chain reorganization
         update.reversedBlocks.push(options.blockHash!);
         return update;

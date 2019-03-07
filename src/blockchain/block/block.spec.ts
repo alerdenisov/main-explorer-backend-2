@@ -14,7 +14,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { BigNumber, Transaction } from 'ethers/utils';
 import { config } from 'common/env';
-import { HolderUpdateDto } from 'common/dto';
+import { HolderUpdateDto, BlockDto } from 'common/dto';
 const ganache = require('ganache-cli');
 
 // type Web3Factory = () => { web3: Web3; provider: Provider };
@@ -29,6 +29,7 @@ class BlockTestContext {
   chain: any;
   module: TestingModule;
   token: Contract;
+  latestBlock: BlockDto;
 }
 
 const ctx: BlockTestContext = new BlockTestContext();
@@ -51,41 +52,45 @@ function waitReceipt(
   };
 }
 
+async function setupContext() {
+  ctx.testNode = ganache.server({
+    time: new Date(0),
+    blockTime: 5,
+    mnemonic:
+      'dead fish racket soul plunger dirty boats cracker mammal nicholas cage',
+  });
+  ctx.chain = await new Promise(resolve =>
+    ctx.testNode.listen(9933, function(err: Error, chain: any) {
+      resolve(chain);
+    }),
+  );
+
+  ctx.module = await Test.createTestingModule({
+    controllers: [BlockController],
+    providers: [
+      {
+        provide: Logger,
+        useValue: new Logger('test logger'),
+      },
+      {
+        provide: 'provider',
+        useFactory: () => () =>
+          new ethers.providers.JsonRpcProvider({
+            url: 'http://localhost:9933',
+            allowInsecure: true,
+          }),
+      },
+      BlockService,
+    ],
+  }).compile();
+}
+
 describe('block exporter tests', () => {
   beforeAll(async () => {
-    jest.setTimeout(15000);
+    jest.setTimeout(60000);
     await config();
 
-    ctx.testNode = ganache.server({
-      time: new Date(0),
-      blockTime: 5,
-      mnemonic:
-        'dead fish racket soul plunger dirty boats cracker mammal nicholas cage',
-    });
-    ctx.chain = await new Promise(resolve =>
-      ctx.testNode.listen(9933, function(err: Error, chain: any) {
-        resolve(chain);
-      }),
-    );
-
-    ctx.module = await Test.createTestingModule({
-      controllers: [BlockController],
-      providers: [
-        {
-          provide: Logger,
-          useValue: new Logger('test logger'),
-        },
-        {
-          provide: 'provider',
-          useFactory: () => () =>
-            new ethers.providers.JsonRpcProvider({
-              url: 'http://localhost:9933',
-              allowInsecure: true,
-            }),
-        },
-        BlockService,
-      ],
-    }).compile();
+    await setupContext();
   });
 
   afterAll(async () => {
@@ -195,7 +200,7 @@ describe('block exporter tests', () => {
       provider.getSigner(0),
     );
 
-    console.log('unfrozen state: ', await token.functions.unfrozen())
+    console.log('unfrozen state: ', await token.functions.unfrozen());
 
     const result = await token.functions
       .transfer(accounts[1], ethers.utils.parseEther('1.0'))
@@ -225,5 +230,78 @@ describe('block exporter tests', () => {
       incoming: ethers.utils.parseEther('1.0').toString(),
       outgoing: '0',
     });
+
+    ctx.latestBlock = <BlockDto>update.incomingBlocks[0];
+    console.log(
+      JSON.stringify(
+        await service
+          .getStateUpdate({ blockHeight: 0 })
+          .then(update => update.incomingBlocks.map(b => b.blockHash)),
+      ),
+    );
+  });
+
+  it('fork node', async () => {
+    ctx.testNode.close();
+    await setupContext();
+
+    const provider = ctx.module.get<Func<JsonRpcProvider>>('provider')();
+    const accounts = await provider.listAccounts();
+    const service = ctx.module.get<BlockService>(BlockService);
+    const signer0 = await provider.getSigner(0);
+
+    const update = await service.getStateUpdate({
+      // 1 - test
+      // 2 - deploy
+      // 3 - unfreeze
+      // 4 - first tx
+      // 5 - forked tx
+      blockHeight: 0,
+    });
+
+    expect(update.incomingBlocks.length).toEqual(0);
+
+    await signer0
+      .sendTransaction({
+        data: '0x',
+        to: signer0.getAddress(),
+        value: 0,
+      })
+      .then(waitReceipt(provider));
+
+    const erc20 = new ethers.ContractFactory(abi, sourceCode(), signer0);
+    const result = await erc20.deploy();
+    await Promise.resolve(result.deployTransaction).then(waitReceipt(provider));
+
+    const token = new ethers.Contract(
+      ctx.token.address,
+      abi,
+      provider.getSigner(0),
+    );
+
+    await token.functions.unfreeze().then(waitReceipt(provider));
+  });
+
+  it('reverse block after fork', async () => {
+    const provider = ctx.module.get<Func<JsonRpcProvider>>('provider')();
+    const accounts = await provider.listAccounts();
+    const service = ctx.module.get<BlockService>(BlockService);
+
+    // await token.functions
+    //   .transfer(accounts[3], ethers.utils.parseEther('1.0'))
+    //   .then(waitReceipt(provider));
+
+    const update = await service.getStateUpdate({
+      // 1 - test
+      // 2 - deploy
+      // 3 - unfreeze
+      // 4 - first tx
+      // 5 - forked tx
+      blockHeight: ctx.latestBlock.blockHeight,
+      blockHash: ctx.latestBlock.blockHash,
+      tokenAddress: ctx.token.address,
+    });
+
+    console.log(JSON.stringify(update, null, 2));
   });
 });
