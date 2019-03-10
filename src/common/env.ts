@@ -17,7 +17,21 @@ export async function config() {
       THROTTLE: joi.number().default(1000),
       BLOCK_MAX_LOOKUP_DISTANCE: joi.number().default(10),
       BLOCK_REQUEST_TIMEOUT: joi.number().default(5000),
-      BLOCK_REQUEST_TX_BATCH: joi.number().default(30)
+      BLOCK_REQUEST_TX_BATCH: joi.number().default(30),
+
+      DATABASE_TYPE: joi.string().default('mysql'),
+      DATABASE_USER: joi.string().default('user'),
+      DATABASE_PASSWORD: joi.string().default('password'),
+      DATABASE_DB: joi.string().default('db'),
+      DATABASE_HOST: joi.string().default('localhost'),
+      DATABASE_PORT: joi.number().default(3306),
+
+
+      MICROSERVICES_RETRY_ATTEMPTS: joi.number().default(5),
+      MICROSERVICES_RETRY_DELAYS: joi.number().default(3000),
+      REDIS_URL: joi.string().default('redis://redis'),
+
+      DATABASE_VERBOSE: joi.boolean().default(false)
     },
     {
       stripUnknown: true,
