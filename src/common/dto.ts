@@ -37,6 +37,7 @@ export class TransactionDto {
   gasLimit: string;
   gasConsumed: string;
   events: EventDto[] = [];
+  nonce: number;
   raw?: any;
 }
 

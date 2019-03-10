@@ -69,6 +69,7 @@ export class BlockService extends BaseNetworkService {
 
     const tx = new TransactionDto();
     tx.sender = native.from;
+    tx.nonce = native.nonce;
     tx.hash = native.transactionHash;
     tx.gasPrice = native.gasPrice.toString();
     tx.gasLimit = native.gasLimit.toString();
