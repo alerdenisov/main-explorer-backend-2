@@ -43,6 +43,7 @@ export class TransactionDto {
 export class BlockDto {
   blockHeight: number;
   blockHash: string;
+  parentHash: string;
   time: Date;
   transactions: TransactionDto[] = [];
   transactionHashes: string[] = [];

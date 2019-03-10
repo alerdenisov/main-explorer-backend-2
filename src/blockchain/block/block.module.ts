@@ -99,6 +99,7 @@ export class BlockService extends BaseNetworkService {
             .getBlock(since + index + 1, true)
             .then(block => {
               const a = new BlockDto();
+              a.parentHash = block.parentHash;
               a.blockHash = block.hash;
               a.blockHeight = block.number;
               a.time = new Date(block.timestamp * 1000);
