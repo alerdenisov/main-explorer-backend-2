@@ -62,6 +62,13 @@
     deprecate "1.0.0"
     optional "0.1.4"
 
+"@nestjs/typeorm@^5.3.0":
+  version "5.3.0"
+  resolved "https://registry.yarnpkg.com/@nestjs/typeorm/-/typeorm-5.3.0.tgz#448d6d08d73ceb3c1f8a00a07e26a86c8a62b9f8"
+  integrity sha512-8g80OcKRTfhh5oSkfUKPMfcKBuC0gsr79wBksUwEWoglB/7bvO/erz8RC0XQPdjRH6NRUc+qrglywGm6Be2FZQ==
+  dependencies:
+    uuid "3.3.2"
+
 "@nuxtjs/opencollective@0.1.0":
   version "0.1.0"
   resolved "https://registry.yarnpkg.com/@nuxtjs/opencollective/-/opencollective-0.1.0.tgz#5dfb10b2148ce77e9590bca9b9ed6e71d2a500eb"
