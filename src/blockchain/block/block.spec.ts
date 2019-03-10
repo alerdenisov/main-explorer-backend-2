@@ -20,8 +20,10 @@ const ganache = require('ganache-cli');
 // type Web3Factory = () => { web3: Web3; provider: Provider };
 
 const blockHashes = [
-  '0xe85cf04c4cc92a7d83bfe11ab50038810593b7f5ccf7f91fb1913261bd420911', // increase height tx
-  '0x6065a348f327b2439c8840e84378266f5de10f5bed69a205553821fd2804ee30', // create contract tx
+  '0xe85cf04c4cc92a7d83bfe11ab50038810593b7f5ccf7f91fb1913261bd420911', // test tx
+  '0x6065a348f327b2439c8840e84378266f5de10f5bed69a205553821fd2804ee30', // deploy
+  '0x8c55598180fa47b30c24a5282b6c023128c66f68c68e481dba7c9b4071fbe1fe', // unfreeze
+  '0x221c2f075f4f347fc1f96d330327d094ed263baf9b729c86bfda8d880e60123d', // forked tx
 ];
 
 class BlockTestContext {
