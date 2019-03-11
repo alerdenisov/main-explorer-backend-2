@@ -38,22 +38,25 @@ export class BlockService extends BaseNetworkService {
     }
 
     return logs
-      .filter(log => log.address === options.tokenAddress)
-      .map(log => this.erc20.parseLog(log))
-      .filter(log => ['Transfer', 'Approve'].includes(log.name))
+      .map((log, index) => ({ log, index }))
+      .filter(log => log.log.address === options.tokenAddress)
+      .map(log => Object.assign(log, { parsed: this.erc20.parseLog(log.log) }))
+      .filter(log => ['Transfer', 'Approve'].includes(log.parsed.name))
       .map(log => {
-        switch (log.name) {
+        switch (log.parsed.name) {
           case 'Transfer':
             const transfer = new TransferDto();
-            transfer.from = log.values.from;
-            transfer.to = log.values.to;
-            transfer.value = log.values.value;
+            transfer.from = log.parsed.values.from;
+            transfer.to = log.parsed.values.to;
+            transfer.value = log.parsed.values.value;
+            transfer.eventIndex =
+              log.log.logIndex || log.log.transactionLogIndex || log.index;
             return transfer;
           case 'Approve':
             const approve = new ApproveDto();
-            approve.owner = log.values.owner;
-            approve.spender = log.values.spender;
-            approve.value = log.values.value;
+            approve.owner = log.parsed.values.owner;
+            approve.spender = log.parsed.values.spender;
+            approve.value = log.parsed.values.value;
             return approve;
           default:
             throw new Error('something wrong with parsing');
@@ -74,7 +77,12 @@ export class BlockService extends BaseNetworkService {
     tx.gasPrice = native.gasPrice.toString();
     tx.gasLimit = native.gasLimit.toString();
     tx.gasConsumed = native.gasUsed.toString();
+    tx.r = native.r;
+    tx.s = native.s;
+    tx.v = native.v;
+    tx.receiver = native.to;
     tx.events = this.parseEvents(native.logs, options);
+    tx.index = native.transactionIndex;
     return tx;
   }
   async getIncomingBlocks(

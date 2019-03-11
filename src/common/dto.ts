@@ -13,6 +13,7 @@ export enum EventType {
 
 export abstract class EventDto {
   eventId: string;
+  eventIndex: number; 
   abstract get eventType(): EventType;
 }
 
@@ -39,6 +40,11 @@ export class TransactionDto {
   events: EventDto[] = [];
   nonce: number;
   raw?: any;
+  r: string;
+  s: string;
+  v: number;
+  receiver: string;
+  index: number;
 }
 
 export class BlockDto {
