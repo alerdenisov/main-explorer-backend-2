@@ -17,7 +17,7 @@ export abstract class EventEntity extends ReversedEnity {
   @PrimaryColumn(HASH_COLUMN)
   eventId: string;
 
-  @ManyToOne(type => TransactionEntity, tx => tx.events)
+  @ManyToOne(type => TransactionEntity, tx => tx.transfers)
   @JoinTable({ name: 'txHash' })
   transaction: TransactionEntity;
 

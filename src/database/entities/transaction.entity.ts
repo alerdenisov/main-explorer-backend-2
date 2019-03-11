@@ -18,8 +18,8 @@ import { ReversedEnity } from './reversed.entity';
 import { Transform } from 'class-transformer';
 import { Matches, IsPositive } from 'class-validator';
 import { utils } from 'ethers';
-import { EventEntity } from './event.entity';
 import { BlockEnity } from './block.entity';
+import { TransferEntity } from './transfer.entity';
 
 @Entity()
 export class TransactionEntity extends ReversedEnity {
@@ -33,8 +33,8 @@ export class TransactionEntity extends ReversedEnity {
   @ManyToOne(type => BlockEnity, block => block.transactions)
   block: BlockEnity;
 
-  @OneToMany(type => EventEntity, event => event.transaction)
-  events: EventEntity[];
+  @OneToMany(type => TransferEntity, event => event.transaction)
+  transfers: TransferEntity[];
 
   @Column('smallint', { unsigned: true })
   @IsPositive()
@@ -57,6 +57,10 @@ export class TransactionEntity extends ReversedEnity {
   @Column('int', { unsigned: true })
   @IsPositive()
   gas: number;
+
+  @Column('int', { unsigned: true })
+  @IsPositive()
+  gasLimit: number;
 
   @Column('int')
   v: number;

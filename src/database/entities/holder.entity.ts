@@ -34,7 +34,7 @@ export class HolderUpdateEntity extends ReversedEnity {
   @JoinColumn({ name: 'holderAddress' })
   holder: HolderEntity;
 
-  @ManyToOne(type => EventEntity)
+  @ManyToOne(type => EventEntity, )
   @JoinColumn({ name: 'eventId' })
   event: EventEntity;
   

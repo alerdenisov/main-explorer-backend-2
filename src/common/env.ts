@@ -25,13 +25,13 @@ export async function config() {
       DATABASE_DB: joi.string().default('db'),
       DATABASE_HOST: joi.string().default('localhost'),
       DATABASE_PORT: joi.number().default(3306),
-
+      DATABASE_VERBOSE: joi.boolean().default(false),
 
       MICROSERVICES_RETRY_ATTEMPTS: joi.number().default(5),
       MICROSERVICES_RETRY_DELAYS: joi.number().default(3000),
       REDIS_URL: joi.string().default('redis://redis'),
 
-      DATABASE_VERBOSE: joi.boolean().default(false)
+      PORT: joi.number().default(4000)
     },
     {
       stripUnknown: true,
