@@ -8,6 +8,7 @@ import { TransactionEntity } from './entities/transaction.entity';
 import { StateUpdateDto, BlockDto, EventType, TransferDto } from 'common/dto';
 import { MessagePattern, RpcException } from '@nestjs/microservices';
 import { utils } from 'ethers';
+import { validate, ValidationError } from 'class-validator';
 
 @Injectable()
 export class DatabaseService {
@@ -25,10 +26,13 @@ export class DatabaseService {
     private readonly transactionsRepository: Repository<TransactionEntity>,
   ) {}
   async addBlocks(blocks: BlockDto[]) {
-    this.connection.transaction(async function(this: never, em) {
+    return this.connection.transaction(async function(this: never, em) {
       const blockRepository = em.getRepository(BlockEnity);
       const transactionsRepository = em.getRepository(TransactionEntity);
       const transfersRepository = em.getRepository(TransferEntity);
+
+      let transactionEntities: TransactionEntity[] = [];
+      let transferEntities: TransferEntity[] = [];
 
       const blockEntities = blocks.map(block => {
         const blockEntity = blockRepository.create();
@@ -37,46 +41,78 @@ export class DatabaseService {
         blockEntity.date = block.time;
         blockEntity.parentHash = block.parentHash;
 
-        blockEntity.transactions = block.transactions.map(tx => {
-          const txEntity = transactionsRepository.create();
-          txEntity.block = blockEntity;
-          txEntity.from = tx.sender;
-          txEntity.gasLimit = parseInt(tx.gasLimit);
-          txEntity.gas = parseInt(tx.gasConsumed);
-          txEntity.gasPrice = new utils.BigNumber(tx.gasPrice);
-          txEntity.hash = tx.hash;
-          txEntity.nonce = tx.nonce;
-          txEntity.r = tx.r;
-          txEntity.s = tx.s;
-          txEntity.v = tx.v;
-          txEntity.to = tx.receiver;
-          txEntity.transactionIndex = tx.index;
+        transactionEntities = blockEntity.transactions = block.transactions.map(
+          tx => {
+            const txEntity = transactionsRepository.create();
+            txEntity.blockHash = blockEntity.hash;
+            txEntity.from = tx.sender;
+            txEntity.gasLimit = parseInt(tx.gasLimit);
+            txEntity.gas = parseInt(tx.gasConsumed);
+            txEntity.gasPrice = new utils.BigNumber(tx.gasPrice);
+            txEntity.hash = tx.hash;
+            txEntity.nonce = tx.nonce;
+            txEntity.r = tx.r;
+            txEntity.s = tx.s;
+            txEntity.v = tx.v;
+            txEntity.to =
+              tx.receiver || '0x0000000000000000000000000000000000000000';
+            txEntity.transactionIndex = tx.index;
+            txEntity.date = blockEntity.date;
 
-          txEntity.transfers = tx.events
-            .filter(
-              ev =>
-                ev.eventType === EventType.Transfer &&
-                ev instanceof TransferDto,
-            )
-            .map((transfer: TransferDto) => {
-              const transferEntity = transfersRepository.create();
-              transferEntity.eventId = utils.sha256(
-                `${block.blockHash}_${tx.hash}_${transfer.eventIndex}`,
-              );
-              transferEntity.transaction = txEntity;
-              transferEntity.block = blockEntity;
-              transferEntity.date = blockEntity.date;
-              transferEntity.from = transfer.from;
-              transferEntity.to = transfer.to;
-              transferEntity.value = new utils.BigNumber(transfer.value);
-              return transferEntity;
-            });
+            txEntity.transfers = tx.events
+              .filter(ev => ev.eventType === EventType.Transfer)
+              .map((transfer: TransferDto) => {
+                const transferEntity = transfersRepository.create();
+                transferEntity.eventId = utils.id(
+                  `${block.blockHash}_${tx.hash}_${transfer.eventIndex}`,
+                );
+                transferEntity.transactionHash = txEntity.hash;
+                transferEntity.blockHash = blockEntity.hash;
+                transferEntity.date = blockEntity.date;
+                transferEntity.from = transfer.from;
+                transferEntity.to = transfer.to;
+                transferEntity.value = new utils.BigNumber(transfer.value);
+                transferEntity.date = blockEntity.date;
+                return transferEntity;
+              });
 
-          return txEntity;
-        });
+            transferEntities = transferEntities.concat(txEntity.transfers);
+
+            return txEntity;
+          },
+        );
+
+        return blockEntity;
       });
 
-      em.save(blockEntities);
+      let errors: ValidationError[] = [];
+      for (const block of blockEntities) {
+        errors = errors.concat(await validate(block));
+
+        for (const transaction of block.transactions) {
+          errors = errors.concat(await validate(transaction));
+
+          for (const transfer of transaction.transfers) {
+            errors = errors.concat(await validate(transfer));
+          }
+        }
+      }
+
+      console.log(
+        JSON.stringify(
+          errors.map(error => ((error.target = null), error)),
+          null,
+          2,
+        ),
+      );
+
+      if (errors.length) {
+        throw new RpcException(errors);
+      }
+
+      await em.save(blockEntities);
+      await em.save(transactionEntities);
+      await em.save(transferEntities);
     });
   }
 
@@ -104,6 +140,12 @@ export class DatabaseService {
     throw new Error('prevent');
     // block.reversed = true;
   }
+
+  async onModuleInit() {
+    console.log('sync...');
+    await this.connection.synchronize(true);
+    console.log('done');
+  }
 }
 
 @Controller('database')
@@ -112,18 +154,24 @@ export class DatabaseController {
 
   @MessagePattern({ service: 'db', cmd: 'apply_state' })
   async applyUpdate(update: StateUpdateDto) {
+    console.log(JSON.stringify(update, null, 2));
+
     if (update.reversedBlocks && update.reversedBlocks.length) {
       // reverse blocks
-      update.reversedBlocks.forEach(hash =>
-        this.databaseService.reverseBlock(hash),
+      await Promise.all(
+        update.reversedBlocks.map(hash =>
+          this.databaseService.reverseBlock(hash),
+        ),
       );
     } else if (update.incomingBlocks && update.incomingBlocks.length) {
-      this.databaseService.addBlocks(update.incomingBlocks);
+      await this.databaseService.addBlocks(update.incomingBlocks);
     }
+
+    return true
   }
 
-  @MessagePattern({ service: 'db', cmd: 'get_latest_update' })
-  async getLatestBlock(): Promise<BlockEnity> {
+  @MessagePattern({ service: 'db', cmd: 'get_latest_block' })
+  async getLatestBlock(args: any): Promise<BlockEnity> {
     return this.databaseService.getLatestBlock();
   }
 }
@@ -132,7 +180,13 @@ export class DatabaseController {
   controllers: [DatabaseController],
   providers: [DatabaseService],
   imports: [
-    TypeOrmModule.forFeature([BlockEnity, TransferEntity, TransactionEntity, HolderEntity, HolderUpdateEntity]),
+    TypeOrmModule.forFeature([
+      BlockEnity,
+      TransferEntity,
+      TransactionEntity,
+      HolderEntity,
+      HolderUpdateEntity,
+    ]),
     TypeOrmModule.forRootAsync({
       useFactory: () => ({
         synchronize: true,

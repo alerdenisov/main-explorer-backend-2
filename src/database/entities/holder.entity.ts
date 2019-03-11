@@ -10,6 +10,7 @@ import {
   ManyToOne,
   Index,
   JoinTable,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { Matches } from 'class-validator';
 import { ReversedEnity } from './reversed.entity';
@@ -20,29 +21,28 @@ import {
   BIGNUM_TRANSFORM,
   HASH_REGEX,
   HASH_COLUMN,
-} from 'database/commot';
+} from 'database/common';
 import { utils } from 'ethers';
 import { TransferEntity } from './transfer.entity';
 
-
 @Entity()
 export class HolderEntity extends ReversedEnity {
-  @PrimaryColumn(ADDRESS_COLUMN)
+  @PrimaryColumn(ADDRESS_COLUMN())
   @Matches(ADDRESS_REGEX)
   address: string;
 
   @ManyToOne(type => HolderUpdateEntity, update => update.holder)
   updates: HolderUpdateEntity[];
 
-  @Column(BIGNUM_COLUMN)
+  @Column(BIGNUM_COLUMN())
   @Transform(BIGNUM_TRANSFORM)
   incomingSum: utils.BigNumber;
 
-  @Column(BIGNUM_COLUMN)
+  @Column(BIGNUM_COLUMN())
   @Transform(BIGNUM_TRANSFORM)
   outgoingSum: utils.BigNumber;
 
-  @Column(BIGNUM_COLUMN)
+  @Column(BIGNUM_COLUMN())
   @Transform(BIGNUM_TRANSFORM)
   balance: utils.BigNumber;
 
@@ -58,8 +58,11 @@ export class HolderEntity extends ReversedEnity {
 
 @Entity()
 export class HolderUpdateEntity extends ReversedEnity {
+  @PrimaryGeneratedColumn()
+  id: number;
+
   @Index()
-  @Column(ADDRESS_COLUMN)
+  @Column(ADDRESS_COLUMN())
   @Matches(ADDRESS_REGEX)
   holderAddress: string;
 
@@ -67,12 +70,12 @@ export class HolderUpdateEntity extends ReversedEnity {
   @JoinTable({ name: 'holderAddress' })
   holder: HolderEntity;
 
-  @ManyToOne(type => TransferEntity, )
+  @ManyToOne(type => TransferEntity)
   @JoinTable({ name: 'transferId' })
   event: TransferEntity;
-  
+
   @Index()
   @Matches(HASH_REGEX)
-  @Column(HASH_COLUMN)
+  @Column(HASH_COLUMN())
   transferId: string;
 }

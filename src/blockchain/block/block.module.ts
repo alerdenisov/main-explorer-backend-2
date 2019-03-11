@@ -23,6 +23,7 @@ import { Transaction, sha256, BigNumber } from 'ethers/utils';
 import { Log, TransactionResponse, TransactionRequest } from 'ethers/providers';
 import { ServiceModule } from 'service.module';
 import { ClientProvider } from 'common/client.provider';
+import { BlockEnity } from '../../../dist/database/entities/block.entity';
 
 export interface UpdateRequestOptions {
   blockHeight: number;
@@ -71,10 +72,14 @@ export class BlockService extends BaseNetworkService {
       });
   }
 
-  async getTransaction(hash: string, options: Partial<UpdateRequestOptions>) {
+  async getTransactionReceipt(
+    index: number,
+    txResponse: TransactionResponse,
+    options: Partial<UpdateRequestOptions>,
+  ) {
     const native = Object.assign(
-      await this.provider().getTransaction(hash),
-      await this.provider().getTransactionReceipt(hash),
+      txResponse,
+      await this.provider().getTransactionReceipt(txResponse.hash),
     );
 
     const tx = new TransactionDto();
@@ -89,7 +94,7 @@ export class BlockService extends BaseNetworkService {
     tx.v = native.v;
     tx.receiver = native.to;
     tx.events = this.parseEvents(native.logs, options);
-    tx.index = native.transactionIndex;
+    tx.index = index;
     return tx;
   }
   async getIncomingBlocks(
@@ -110,29 +115,21 @@ export class BlockService extends BaseNetworkService {
     return await Bluebird.all(
       Array(lookup)
         .fill(0)
-        .map((_, index) =>
-          this.provider()
+        .map((_, index) => {
+          console.log(`start requesting block ${since + index + 1}`);
+          return this.provider()
             .getBlock(since + index + 1, true)
             .then(block => {
+              console.log(`received block ${since + index + 1}`);
               const a = new BlockDto();
               a.parentHash = block.parentHash;
               a.blockHash = block.hash;
               a.blockHeight = block.number;
               a.time = new Date(block.timestamp * 1000);
-              a.transactionHashes = (block.transactions as any[]).map(
-                (tx: Transaction | string) => {
-                  if (typeof tx === 'object' && tx.hash) {
-                    return tx.hash;
-                  } else if (typeof tx === 'string') {
-                    return tx;
-                  } else {
-                    throw new Error('unknown tx');
-                  }
-                },
-              );
+              a.transactions = <any>block.transactions;
               return a;
-            }),
-        ),
+            });
+        }),
     ).timeout(process.env.BLOCK_REQUEST_TIMEOUT, 'getBlock timeout');
   }
 
@@ -146,9 +143,16 @@ export class BlockService extends BaseNetworkService {
 
     if (options.blockHash) {
       // check if hash of latest known block is same
-      const possibleSameLatest = await this.provider().getBlock(
-        options.blockHeight,
-      );
+      const possibleSameLatest = await Bluebird.resolve(
+        this.provider().getBlock(options.blockHeight),
+      )
+        .timeout(process.env.BLOCK_REQUEST_TIMEOUT)
+        .catch(error => {
+          console.log(process.env.WEB3_URL);
+          throw new Error(
+            'BlockModule Expection: Timeout on getBlockRequest' + __filename,
+          );
+        });
 
       if (!possibleSameLatest || possibleSameLatest.hash != options.blockHash) {
         // chain reorganization
@@ -163,13 +167,25 @@ export class BlockService extends BaseNetworkService {
     );
 
     for (let block of update.incomingBlocks) {
+      console.log(
+        `start requesting transaction from block #${block.blockHeight}`,
+      );
       const transactions = await Bluebird.map(
-        block.transactionHashes,
-        hash => this.getTransaction(hash, options),
+        block.transactions,
+        (tx, index, len) =>
+          Bluebird.resolve(
+            this.getTransactionReceipt(index, tx as any, options),
+          ).timeout(
+            process.env.BLOCK_REQUEST_TIMEOUT,
+            `Failed to request tx ${tx.hash} – Timeout [${index} of ${len}]`,
+          ),
         { concurrency: process.env.BLOCK_REQUEST_TX_BATCH },
       );
 
-      block.transactions = transactions;
+      console.log(
+        `end requesting transaction from block #${block.blockHeight}`,
+      );
+      block.transactions = transactions.filter(tx => tx.events.length > 0);
 
       const transfers = block.transactions
         .map(tx => tx.events)
@@ -212,7 +228,7 @@ export class BlockController {
   getStateUpdate(
     payload: Partial<UpdateRequestOptions>,
   ): Promise<DeepPartial<StateUpdateDto>> {
-    console.log('get_state_update call')
+    console.log('get_state_update call');
     return this.service.getStateUpdate(
       Object.assign(
         {
@@ -227,19 +243,49 @@ export class BlockController {
 @Injectable()
 export class BlockchainDemon {
   constructor(private readonly client: ClientProxy) {
-    this.loop();
+    this.run(); //.catch(e => this.loop());
+  }
+
+  async run() {
+    let error = true;
+    while (error) {
+      try {
+        await this.loop();
+      } catch (e) {
+        console.log(e);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
   }
 
   async loop() {
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    console.log('test getting update')
-    console.log(await this.client.send<any, Partial<UpdateRequestOptions>>(
-      { service: 'block', cmd: 'get_state_update' },
-      {
-        blockHeight: process.env.BLOCK_FROM_BLOCK,
-        tokenAddress: process.env.BLOCK_TOKEN_ADDRESS,
-      },
-    ).toPromise());
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    while (true) {
+      console.log('request latest block');
+      const block = await this.client
+        .send<BlockEnity, any>({ service: 'db', cmd: 'get_latest_block' }, {})
+        .toPromise();
+
+      const update = await this.client
+        .send<any, Partial<UpdateRequestOptions>>(
+          { service: 'block', cmd: 'get_state_update' },
+          {
+            blockHeight:
+              typeof block !== 'undefined' ? block.height : process.env.BLOCK_FROM_BLOCK,
+            tokenAddress: process.env.BLOCK_TOKEN_ADDRESS,
+          },
+        )
+        .toPromise();
+
+      // @MessagePattern({ service: 'db', cmd: 'apply_state' })
+      console.log('apply update');
+      await this.client
+        .send<any, StateUpdateDto>(
+          { service: 'db', cmd: 'apply_state' },
+          update,
+        )
+        .toPromise();
+    }
   }
 
   async onModuleInit() {

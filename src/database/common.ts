@@ -25,43 +25,51 @@ export class HexTransformer implements ValueTransformer {
   }
 }
 
-
 export class BigNumberTransformer implements ValueTransformer {
-    to(value: utils.BigNumber): string {
-      return value.toString();
-    }
-  
-    from(value: string): utils.BigNumber {
-      return new utils.BigNumber(value);
-    }
+  to(value: utils.BigNumber): string {
+    return value.toString();
   }
-  
+
+  from(value: string): utils.BigNumber {
+    return new utils.BigNumber(value);
+  }
+}
 
 export const ADDRESS_REGEX = new RegExp(/^0x([A-z0-9]{40})$/);
 export const HASH_REGEX = new RegExp(/^0x([A-z0-9]{64})$/);
 export const BINARY_REGEX = new RegExp(/^0x([A-z0-9]+)$/);
 
-export const ADDRESS_COLUMN: ColumnOptions = {
-  length: 20,
-  transformer: new HexTransformer(20),
-  type: 'binary',
-};
-export const HASH_COLUMN: ColumnOptions = {
-  length: 32,
-  transformer: new HexTransformer(32),
-  type: 'binary',
-};
+export function ADDRESS_COLUMN(): ColumnOptions {
+  return {
+    length: 20,
+    transformer: new HexTransformer(20),
+    type: 'binary',
+  };
+}
 
-export const BINARY_COLUMN: ColumnOptions = {
-  transformer: new HexTransformer(),
-  type: 'varbinary',
-};
+export function HASH_COLUMN(): ColumnOptions {
+  return {
+    length: 32,
+    transformer: new HexTransformer(32),
+    type: 'binary',
+  };
+}
 
-export const BIGNUM_COLUMN: ColumnOptions = {
-  length: 79, // length of string representation of 2^256-1,
-  transformer: new BigNumberTransformer(),
-  default: new utils.BigNumber(0),
-  type: 'char',
-};
+export function BINARY_COLUMN(): ColumnOptions {
+  return {
+    transformer: new HexTransformer(),
+    type: 'varbinary',
+  };
+}
 
-export const BIGNUM_TRANSFORM = (v : utils.BigNumber | string) => v instanceof utils.BigNumber ? v.toString() : new utils.BigNumber(v);
+export function BIGNUM_COLUMN(): ColumnOptions {
+  return {
+    length: 79, // length of string representation of 2^256-1,
+    transformer: new BigNumberTransformer(),
+    default: new utils.BigNumber(0),
+    type: 'char',
+  };
+}
+
+export const BIGNUM_TRANSFORM = (v: utils.BigNumber | string) =>
+  v instanceof utils.BigNumber ? v.toString() : new utils.BigNumber(v);
