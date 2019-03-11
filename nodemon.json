@@ -2,5 +2,5 @@
   "watch": ["src"],
   "ext": "ts",
   "ignore": ["src/**/*.spec.ts"],
-  "exec": "ts-node -r tsconfig-paths/register src/main.ts"
+  "exec": "ts-node --project ./tsconfig.json -r tsconfig-paths/register --files src/index.ts src/types/index.d.ts"
 }
