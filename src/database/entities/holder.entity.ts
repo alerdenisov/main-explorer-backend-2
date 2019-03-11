@@ -9,7 +9,7 @@ import {
   OneToMany,
   ManyToOne,
   Index,
-  JoinColumn,
+  JoinTable,
 } from 'typeorm';
 import { Matches } from 'class-validator';
 import { ReversedEnity } from './reversed.entity';
@@ -22,27 +22,8 @@ import {
   HASH_COLUMN,
 } from 'database/commot';
 import { utils } from 'ethers';
-import { EventEntity } from './event.entity';
+import { TransferEntity } from './transfer.entity';
 
-@Entity()
-export class HolderUpdateEntity extends ReversedEnity {
-  @Index()
-  @Matches(ADDRESS_REGEX)
-  holderAddress: string;
-
-  @OneToMany(type => HolderEntity, holder => holder.updates)
-  @JoinColumn({ name: 'holderAddress' })
-  holder: HolderEntity;
-
-  @ManyToOne(type => EventEntity, )
-  @JoinColumn({ name: 'eventId' })
-  event: EventEntity;
-  
-  @Index()
-  @Matches(HASH_REGEX)
-  @Column(HASH_COLUMN)
-  eventId: string;
-}
 
 @Entity()
 export class HolderEntity extends ReversedEnity {
@@ -73,4 +54,25 @@ export class HolderEntity extends ReversedEnity {
 
   @Column('double', { default: 0 })
   estimateBalance: number;
+}
+
+@Entity()
+export class HolderUpdateEntity extends ReversedEnity {
+  @Index()
+  @Column(ADDRESS_COLUMN)
+  @Matches(ADDRESS_REGEX)
+  holderAddress: string;
+
+  @OneToMany(type => HolderEntity, holder => holder.updates)
+  @JoinTable({ name: 'holderAddress' })
+  holder: HolderEntity;
+
+  @ManyToOne(type => TransferEntity, )
+  @JoinTable({ name: 'transferId' })
+  event: TransferEntity;
+  
+  @Index()
+  @Matches(HASH_REGEX)
+  @Column(HASH_COLUMN)
+  transferId: string;
 }

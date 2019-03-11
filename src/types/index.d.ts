@@ -7,6 +7,8 @@ declare namespace NodeJS {
     BLOCK_REQUEST_TIMEOUT: number;
     BLOCK_REQUEST_RECEIPTS_TIMEOUT: number;
     BLOCK_REQUEST_TX_BATCH: number;
+    BLOCK_TOKEN_ADDRESS: string;
+    BLOCK_FROM_BLOCK: number;
 
     DATABASE_TYPE: string;
     DATABASE_USER?: string;

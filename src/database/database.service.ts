@@ -1,7 +1,7 @@
 import { Injectable, Module, Controller } from '@nestjs/common';
 import { Repository, Connection } from 'typeorm';
 import { BlockEnity } from './entities/block.entity';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, InjectRepository } from '@nestjs/typeorm';
 import { TransferEntity } from './entities/transfer.entity';
 import { HolderEntity, HolderUpdateEntity } from './entities/holder.entity';
 import { TransactionEntity } from './entities/transaction.entity';
@@ -13,10 +13,15 @@ import { utils } from 'ethers';
 export class DatabaseService {
   constructor(
     private readonly connection: Connection,
+    @InjectRepository(BlockEnity)
     private readonly blocksRepository: Repository<BlockEnity>,
+    @InjectRepository(TransferEntity)
     private readonly transfersRepository: Repository<TransferEntity>,
+    @InjectRepository(HolderEntity)
     private readonly holdersRepository: Repository<HolderEntity>,
+    @InjectRepository(HolderUpdateEntity)
     private readonly holdersUpdateRepository: Repository<HolderUpdateEntity>,
+    @InjectRepository(TransactionEntity)
     private readonly transactionsRepository: Repository<TransactionEntity>,
   ) {}
   async addBlocks(blocks: BlockDto[]) {
@@ -127,7 +132,25 @@ export class DatabaseController {
   controllers: [DatabaseController],
   providers: [DatabaseService],
   imports: [
-    TypeOrmModule.forRoot({
+    TypeOrmModule.forFeature([BlockEnity, TransferEntity, TransactionEntity, HolderEntity, HolderUpdateEntity]),
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        synchronize: true,
+        logging: process.env.DATABASE_VERBOSE,
+        type: <any>process.env.DATABASE_TYPE,
+        host: process.env.DATABASE_HOST,
+        port: process.env.DATABASE_PORT,
+        username: process.env.DATABASE_USER,
+        password: process.env.DATABASE_PASSWORD,
+        database: process.env.DATABASE_DB,
+        entities: [__dirname + '/entities/*.entity{.ts,.js}'],
+      }),
+    }),
+  ],
+})
+export class DatabaseModule {
+  constructor() {
+    console.log({
       synchronize: true,
       logging: process.env.DATABASE_VERBOSE,
       type: <any>process.env.DATABASE_TYPE,
@@ -136,8 +159,7 @@ export class DatabaseController {
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_DB,
-      entities: [__dirname + '/entities/*.entity.ts'],
-    }),
-  ],
-})
-export class DatabaseModule {}
+      entities: [__dirname + '/entities/*.entity{.ts,.js}'],
+    });
+  }
+}

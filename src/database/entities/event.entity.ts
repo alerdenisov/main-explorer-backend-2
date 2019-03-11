@@ -27,7 +27,7 @@ export abstract class EventEntity extends ReversedEnity {
   txHash: string;
 
   @ManyToOne(type => BlockEnity)
-  @JoinColumn({ name: 'blockHash' })
+  @JoinTable({ name: 'blockHash' })
   block: BlockEnity;
 
   @Index()

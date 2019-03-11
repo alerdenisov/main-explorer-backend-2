@@ -1,12 +1,12 @@
-import { config } from "common/env";
-import { BlockModule } from "blockchain/block/block.module";
-import { DatabaseModule } from "database/database.service";
-import { ApiModule } from "api/api.module";
-import { DynamicModule, Type } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import { ServiceModule } from "service.module";
-import { Transport } from "@nestjs/microservices";
-
+import { config } from 'common/env';
+import { BlockModule } from 'blockchain/block/block.module';
+import { DatabaseModule } from 'database/database.service';
+import { ApiModule } from 'api/api.module';
+import { DynamicModule, Type } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { ServiceModule } from 'service.module';
+import { Transport } from '@nestjs/microservices';
+import { getClientOptions } from 'common/client.provider';
 
 export const services: {
   [service: string]:
@@ -18,9 +18,8 @@ export const services: {
 } = {
   blockchain: BlockModule,
   database: DatabaseModule,
-  api: ApiModule
+  api: ApiModule,
 };
-
 
 export async function bootstrap() {
   await config();
@@ -28,43 +27,28 @@ export async function bootstrap() {
   const service: string = process.env.SERVICE_MODULE || args[args.length - 1];
 
   if (typeof services[service] === 'undefined') {
-    throw new Error("unknown service")
+    throw new Error('unknown service');
   }
 
   const module = services[service];
-  if(service === "api") {
+  if (service === 'api') {
     const api = await NestFactory.create(ServiceModule.forRoot(module));
 
     api.enableCors({
       origin: '*',
     });
 
-    api.connectMicroservice({
-      transport: Transport.REDIS,
-      options: {
-        url: process.env.REDIS_URL,
-        retryAttempts: process.env.MICROSERVICES_RETRY_ATTEMPTS,
-        retryDelay: process.env.MICROSERVICES_RETRY_DELAYS,
-      },
-    });
+    api.connectMicroservice(getClientOptions());
 
     api.listen(process.env.PORT);
   } else {
     const serviceApp = await NestFactory.createMicroservice(
       ServiceModule.forRoot(module),
-      {
-        transport: Transport.REDIS,
-        options: {
-          url: process.env.REDIS_URL,
-          retryAttempts: process.env.MICROSERVICES_RETRY_ATTEMPTS,
-          retryDelay: process.env.MICROSERVICES_RETRY_DELAYS,
-        },
-      },
+      getClientOptions(),
     );
 
     serviceApp.listen(() => console.log(`service ${service} is started`));
   }
-
 }
 
 bootstrap();
@@ -75,12 +59,12 @@ bootstrap();
 // async function run() {
 //   const nodeA = ganache.server({
 //   });
-  
+
 //   await new Promise(resolve => nodeA.listen(8545, function(err : Error, chain : any) {resolve(chain)}));
 //   let web3 = new Web3("http://localhost:8545");
 
 //   const accounts = await web3.eth.getAccounts();
-  
+
 //   for(let nonce = 0; nonce < 10; nonce++) {
 //     await web3.eth.sendTransaction({
 //       from: accounts[0],
@@ -94,7 +78,7 @@ bootstrap();
 //   console.log(!!block10, block10.hash)
 //   const block11 = await web3.eth.getBlock(11);
 //   console.log(!!block11, !!block11 && block11.hash)
-  
+
 //   // const nodeB = ganache.server({
 //   //   fork: "http://localhost:8545@10"
 //   // });
@@ -129,7 +113,6 @@ bootstrap();
 //   // console.log(latestA.hash === latestB.hash);
 // }
 // run()
-
 
 // // server.listen(8545, async function(err, blockchain) {
 // //   const web3 = new Web3(ganache.provider())

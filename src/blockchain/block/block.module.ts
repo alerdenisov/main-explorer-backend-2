@@ -1,6 +1,11 @@
 import { Module, Controller, Injectable, Inject, Logger } from '@nestjs/common';
 import { BaseNetworkService } from 'blockchain/base-network.service';
-import { MessagePattern } from '@nestjs/microservices';
+import {
+  MessagePattern,
+  ClientProxy,
+  Client,
+  Transport,
+} from '@nestjs/microservices';
 import {
   BlockDto,
   StateUpdateDto,
@@ -16,6 +21,8 @@ import * as Bluebird from 'bluebird';
 import { ethers } from 'ethers';
 import { Transaction, sha256, BigNumber } from 'ethers/utils';
 import { Log, TransactionResponse, TransactionRequest } from 'ethers/providers';
+import { ServiceModule } from 'service.module';
+import { ClientProvider } from 'common/client.provider';
 
 export interface UpdateRequestOptions {
   blockHeight: number;
@@ -203,8 +210,9 @@ export class BlockController {
 
   @MessagePattern({ service: 'block', cmd: 'get_state_update' })
   getStateUpdate(
-    payload: Partial<Partial<UpdateRequestOptions>>,
+    payload: Partial<UpdateRequestOptions>,
   ): Promise<DeepPartial<StateUpdateDto>> {
+    console.log('get_state_update call')
     return this.service.getStateUpdate(
       Object.assign(
         {
@@ -216,12 +224,38 @@ export class BlockController {
   }
 }
 
+@Injectable()
+export class BlockchainDemon {
+  constructor(private readonly client: ClientProxy) {
+    this.loop();
+  }
+
+  async loop() {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    console.log('test getting update')
+    console.log(await this.client.send<any, Partial<UpdateRequestOptions>>(
+      { service: 'block', cmd: 'get_state_update' },
+      {
+        blockHeight: process.env.BLOCK_FROM_BLOCK,
+        tokenAddress: process.env.BLOCK_TOKEN_ADDRESS,
+      },
+    ).toPromise());
+  }
+
+  async onModuleInit() {
+    console.log('connecting to mesh...');
+    await this.client.connect();
+    console.log('Done!');
+  }
+}
+
 @Module({
   providers: [
     {
       provide: Logger,
       useValue: new Logger('test logger'),
     },
+    ClientProvider,
     {
       provide: 'provider',
       useFactory: () => () =>
@@ -231,6 +265,7 @@ export class BlockController {
         }),
     },
     BlockService,
+    BlockchainDemon,
   ],
   controllers: [BlockController],
 })
