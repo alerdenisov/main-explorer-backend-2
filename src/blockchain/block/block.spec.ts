@@ -143,8 +143,11 @@ describe('block exporter tests', () => {
     const service = ctx.module.get<BlockService>(BlockService);
     const update = await service.getStateUpdate({
       blockHeight: 0,
+      tokenAddress: ctx.token.address,
     });
 
+    console.log(JSON.stringify(update, null, 2));
+    
     expect(update.incomingBlocks.length).toEqual(2);
     expect(update.incomingBlocks.map(b => b.blockHash!)).toEqual(
       blockHashes.slice(0, 2),
@@ -237,7 +240,7 @@ describe('block exporter tests', () => {
     console.log(
       JSON.stringify(
         await service
-          .getStateUpdate({ blockHeight: 0 })
+          .getStateUpdate({ blockHeight: 0, tokenAddress: ctx.token.address })
           .then(update => update.incomingBlocks.map(b => b.blockHash)),
       ),
     );

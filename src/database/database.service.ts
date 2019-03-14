@@ -41,7 +41,7 @@ export class DatabaseService {
         blockEntity.date = block.time;
         blockEntity.parentHash = block.parentHash;
 
-        transactionEntities = blockEntity.transactions = block.transactions.map(
+        blockEntity.transactions = block.transactions.map(
           tx => {
             const txEntity = transactionsRepository.create();
             txEntity.blockHash = blockEntity.hash;
@@ -81,6 +81,8 @@ export class DatabaseService {
             return txEntity;
           },
         );
+
+        transactionEntities = transactionEntities.concat(blockEntity.transactions)
 
         return blockEntity;
       });

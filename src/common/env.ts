@@ -16,8 +16,8 @@ export async function config() {
         .uri({ allowRelative: false })
         .default('http://localhost:8545'),
       THROTTLE: joi.number().default(1000),
-      BLOCK_MAX_LOOKUP_DISTANCE: joi.number().default(1),
-      BLOCK_REQUEST_TIMEOUT: joi.number().default(10000),
+      BLOCK_MAX_LOOKUP_DISTANCE: joi.number().default(20),
+      BLOCK_REQUEST_TIMEOUT: joi.number().default(4500),
       BLOCK_REQUEST_TX_BATCH: joi.number().default(15),
       BLOCK_TOKEN_ADDRESS: joi.string().regex(ADDRESS_REGEX).default('0x9f0f1Be08591AB7d990faf910B38ed5D60e4D5Bf'),
       BLOCK_FROM_BLOCK: joi.number().positive().default(6294815),

@@ -74,12 +74,12 @@ export class BlockService extends BaseNetworkService {
 
   async getTransactionReceipt(
     index: number,
-    txResponse: TransactionResponse,
+    txHash: string,
     options: Partial<UpdateRequestOptions>,
   ) {
     const native = Object.assign(
-      txResponse,
-      await this.provider().getTransactionReceipt(txResponse.hash),
+      await this.provider().getTransaction(txHash),
+      await this.provider().getTransactionReceipt(txHash),
     );
 
     const tx = new TransactionDto();
@@ -101,7 +101,21 @@ export class BlockService extends BaseNetworkService {
     since: number,
     options: Partial<UpdateRequestOptions>,
   ) {
-    const heightInNetwork = await this.provider().getBlockNumber();
+    // Dirty hack there with asking for events before deep to acquiring chain data from network
+    // So how it works?
+
+    // 1) Take a list (just one if be honest) of token addresses what we're looking for
+    // 2) Asking network about incoming events in lookup distance
+    // 3) Prepere dictionary with blockhashes as keys and list of events corresponding to block as value
+    // 4) Asking for a blocks (without tx)
+    // 5) Map previously created dictionary to obtain list of blocks
+    // 6) ...
+    // 7) Profit :D
+
+    console.log('request actual network height');
+    const heightInNetwork = await Bluebird.resolve(
+      this.provider().getBlockNumber(),
+    ).timeout(process.env.BLOCK_REQUEST_TIMEOUT, 'Timeout getBlockNumber()');
 
     if (typeof heightInNetwork !== 'number') {
       throw new Error("Can't receive height of network " + heightInNetwork);
@@ -112,13 +126,29 @@ export class BlockService extends BaseNetworkService {
       heightInNetwork - since,
     );
 
+    const events = await this.provider().getLogs({
+      address: options.tokenAddress,
+      topics: [], // any of them
+      fromBlock: since + 1,
+      toBlock: since + lookup + 1,
+    });
+
+    const txMap = events.reduce(
+      (dict, log) => (
+        (dict[log.blockHash!] = dict[log.blockHash!] || []),
+        dict[log.blockHash].push(log.transactionHash),
+        dict
+      ),
+      {} as { [blockHash: string]: string[] },
+    );
+
     return await Bluebird.all(
       Array(lookup)
         .fill(0)
         .map((_, index) => {
           console.log(`start requesting block ${since + index + 1}`);
           return this.provider()
-            .getBlock(since + index + 1, true)
+            .getBlock(since + index + 1, false)
             .then(block => {
               console.log(`received block ${since + index + 1}`);
               const a = new BlockDto();
@@ -126,7 +156,10 @@ export class BlockService extends BaseNetworkService {
               a.blockHash = block.hash;
               a.blockHeight = block.number;
               a.time = new Date(block.timestamp * 1000);
-              a.transactions = <any>block.transactions;
+              a.transactionHashes =
+                typeof txMap[block.hash] === 'undefined'
+                  ? []
+                  : txMap[block.hash];
               return a;
             });
         }),
@@ -141,6 +174,7 @@ export class BlockService extends BaseNetworkService {
     }
     const update = new StateUpdateDto();
 
+    // reverse block if it needed (and exit)
     if (options.blockHash) {
       // check if hash of latest known block is same
       const possibleSameLatest = await Bluebird.resolve(
@@ -171,13 +205,13 @@ export class BlockService extends BaseNetworkService {
         `start requesting transaction from block #${block.blockHeight}`,
       );
       const transactions = await Bluebird.map(
-        block.transactions,
+        block.transactionHashes,
         (tx, index, len) =>
           Bluebird.resolve(
-            this.getTransactionReceipt(index, tx as any, options),
+            this.getTransactionReceipt(index, tx, options),
           ).timeout(
             process.env.BLOCK_REQUEST_TIMEOUT,
-            `Failed to request tx ${tx.hash} – Timeout [${index} of ${len}]`,
+            `Failed to request tx ${tx} – Timeout [${index} of ${len}]`,
           ),
         { concurrency: process.env.BLOCK_REQUEST_TX_BATCH },
       );
@@ -262,16 +296,20 @@ export class BlockchainDemon {
     await new Promise(resolve => setTimeout(resolve, 1500));
     while (true) {
       console.log('request latest block');
-      const block = await this.client
-        .send<BlockEnity, any>({ service: 'db', cmd: 'get_latest_block' }, {})
-        .toPromise();
+      const block = await Bluebird.resolve(
+        this.client
+          .send<BlockEnity, any>({ service: 'db', cmd: 'get_latest_block' }, {})
+          .toPromise(),
+      ).timeout(process.env.BLOCK_REQUEST_TIMEOUT, 'failure');
 
       const update = await this.client
         .send<any, Partial<UpdateRequestOptions>>(
           { service: 'block', cmd: 'get_state_update' },
           {
             blockHeight:
-              typeof block !== 'undefined' ? block.height : process.env.BLOCK_FROM_BLOCK,
+              typeof block !== 'undefined'
+                ? block.height
+                : process.env.BLOCK_FROM_BLOCK,
             tokenAddress: process.env.BLOCK_TOKEN_ADDRESS,
           },
         )
