@@ -21,6 +21,7 @@ export async function config() {
       BLOCK_REQUEST_TX_BATCH: joi.number().default(15),
       BLOCK_TOKEN_ADDRESS: joi.string().regex(ADDRESS_REGEX).default('0x9f0f1Be08591AB7d990faf910B38ed5D60e4D5Bf'),
       BLOCK_FROM_BLOCK: joi.number().positive().default(6294815),
+      BLOCK_ANCIENT_BLOCKS: joi.number().positive().min(7350000).default(7350001),
 
       DATABASE_TYPE: joi.string().default('mysql'),
       DATABASE_USER: joi.string().default('user'),
