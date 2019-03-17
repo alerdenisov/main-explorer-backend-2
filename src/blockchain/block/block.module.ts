@@ -23,7 +23,7 @@ import { Transaction, sha256, BigNumber } from 'ethers/utils';
 import { Log, TransactionResponse, TransactionRequest } from 'ethers/providers';
 import { ServiceModule } from 'service.module';
 import { ClientProvider } from 'common/client.provider';
-import { BlockEnity } from '../../../dist/database/entities/block.entity';
+import { BlockEnity } from 'database/entities/block.entity';
 
 export interface UpdateRequestOptions {
   blockHeight: number;
